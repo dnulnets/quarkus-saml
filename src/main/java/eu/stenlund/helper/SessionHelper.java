@@ -210,8 +210,7 @@ public class SessionHelper {
         nc.setMaxAge(MAX_AGE);
         nc.setPath("/");
         nc.setDomain(getDomain());
-        nc.setAttribute("SameSite", "Lax");
-
+        nc.setAttribute("SameSite", "Strict"); // Aaaargh, need to fix this, not supported for now
         return nc;
     }
 
