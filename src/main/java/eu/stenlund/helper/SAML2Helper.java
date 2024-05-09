@@ -1,4 +1,4 @@
-package eu.stenlund;
+package eu.stenlund.helper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,26 +52,27 @@ import org.opensaml.xmlsec.keyinfo.KeyInfoCredentialResolver;
 import org.opensaml.xmlsec.signature.support.impl.ExplicitKeySignatureTrustEngine;
 import org.w3c.dom.Element;
 
+import eu.stenlund.IDProxyException;
 import net.shibboleth.shared.component.ComponentInitializationException;
 import net.shibboleth.shared.security.impl.RandomIdentifierGenerationStrategy;
 import net.shibboleth.shared.xml.SerializeSupport;
 import net.shibboleth.shared.xml.impl.BasicParserPool;
 
-public class SAML2Util {
+public class SAML2Helper {
 
-	private static final Logger log = Logger.getLogger("SAML2Util");
-	private static final SAML2Util instance = new SAML2Util();
+	private static final Logger log = Logger.getLogger("SAML2Helper");
+	private static final SAML2Helper instance = new SAML2Helper();
 	private static final RandomIdentifierGenerationStrategy secureRandomIdGenerator = new RandomIdentifierGenerationStrategy();
 	private Boolean initialized = false;
 
-	private SAML2Util() {}
+	private SAML2Helper() {}
 
 	/**
 	 * Returns with the singleton of SAML2Util and initializes it if needed.
 	 * 
 	 * @return The SAML2Util singleton
 	 */
-	public static SAML2Util getInstance()
+	public static SAML2Helper getInstance()
 	{
 		if (!instance.initialized) {
 			instance.init();
@@ -336,7 +337,7 @@ public class SAML2Util {
 	 * @return A SAML NameID policy
 	 */
 	public static NameIDPolicy buildNameIdPolicy() {
-		NameIDPolicy nameIDPolicy = SAML2Util.buildSAMLObject(NameIDPolicy.class);
+		NameIDPolicy nameIDPolicy = SAML2Helper.buildSAMLObject(NameIDPolicy.class);
 		nameIDPolicy.setAllowCreate(true);
 		nameIDPolicy.setFormat(NameIDType.PERSISTENT);
 		return nameIDPolicy;
@@ -349,7 +350,7 @@ public class SAML2Util {
 	 * @return The issuer
 	 */
 	public static Issuer buildIssuer(String is) {
-		Issuer issuer = SAML2Util.buildSAMLObject(Issuer.class);
+		Issuer issuer = SAML2Helper.buildSAMLObject(Issuer.class);
 		issuer.setValue(is);
 		return issuer;
 	}
@@ -361,10 +362,10 @@ public class SAML2Util {
 	 * @return The SAML endpoint
 	 */
 	public static Endpoint urlToSSOEndpoint(String URL) {
-		SingleSignOnService endpoint = SAML2Util.buildSAMLObject(SingleSignOnService.class);
+		SingleSignOnService endpoint = SAML2Helper.buildSAMLObject(SingleSignOnService.class);
 		endpoint.setBinding(SAMLConstants.SAML2_POST_BINDING_URI);
 		endpoint.setLocation(URL);
-		SAML2Util.logSAMLObject(endpoint);
+		SAML2Helper.logSAMLObject(endpoint);
 		return endpoint;
 	}
 

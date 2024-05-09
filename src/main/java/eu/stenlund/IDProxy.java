@@ -12,6 +12,7 @@ import org.opensaml.saml.saml2.metadata.IDPSSODescriptor;
 import org.opensaml.saml.saml2.metadata.SingleSignOnService;
 import org.opensaml.security.credential.Credential;
 
+import eu.stenlund.helper.SAML2Helper;
 import io.quarkus.runtime.Startup;
 import jakarta.enterprise.context.ApplicationScoped;
 import net.shibboleth.shared.component.ComponentInitializationException;
@@ -63,14 +64,14 @@ public class IDProxy {
 		log.info ("Initializing the IDProxy Application");
 
 		/* Initializes it by calling getInstance for the first time */
-		SAML2Util.getInstance();
+		SAML2Helper.getInstance();
 
 		/* Read and parse the IdP metadata file */
 		try {
 			File metadataFile = new File(getClass().getClassLoader().getResource(metadata).toURI());
 			metadataResolver = new FilesystemMetadataResolver(metadataFile);
 			metadataResolver.setId(metadataResolver.getClass().getCanonicalName());
-			metadataResolver.setParserPool(SAML2Util.createParserPool());
+			metadataResolver.setParserPool(SAML2Helper.createParserPool());
 			metadataResolver.initialize();
 		} catch (URISyntaxException | ResolverException | ComponentInitializationException e) {
 			log.error ("Unable to read and parse metadata," + e.getMessage());
@@ -81,8 +82,8 @@ public class IDProxy {
 		parseIDPMetadata(idpEntityID);
 
 		/* Read the signing and the encryption keys */
-		spSigning = SAML2Util.getInstance().readPrivatePEMKey(spPEMSigning);
-		spEncryption = SAML2Util.getInstance().readPrivatePEMKey(spPEMEncryption);
+		spSigning = SAML2Helper.getInstance().readPrivatePEMKey(spPEMSigning);
+		spEncryption = SAML2Helper.getInstance().readPrivatePEMKey(spPEMEncryption);
 	
     }
 

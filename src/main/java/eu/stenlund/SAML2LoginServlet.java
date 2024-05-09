@@ -24,6 +24,9 @@ import org.opensaml.xmlsec.context.SecurityParametersContext;
 import org.opensaml.xmlsec.keyinfo.impl.BasicKeyInfoGeneratorFactory;
 import org.opensaml.xmlsec.signature.support.SignatureConstants;
 
+import eu.stenlund.helper.SAML2Helper;
+import eu.stenlund.helper.Session;
+import eu.stenlund.helper.SessionHelper;
 import jakarta.inject.Inject;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -73,13 +76,13 @@ public class SAML2LoginServlet extends HttpServlet {
 
 			/* Set the realy state, need this for pairing it together again on the assert */
 			SAMLBindingContext bindingContext = context.ensureSubcontext(SAMLBindingContext.class);
-			s.id = SAML2Util.generateSecureRandomId();
+			s.id = SAML2Helper.generateSecureRandomId();
 			bindingContext.setRelayState(s.id);
 			
 			/* Set the peer entity context endpoint to the remote IdP*/
 			SAMLPeerEntityContext peerEntityContext = context.ensureSubcontext(SAMLPeerEntityContext.class);
 			SAMLEndpointContext endpointContext = peerEntityContext.ensureSubcontext(SAMLEndpointContext.class);
-			endpointContext.setEndpoint(SAML2Util.urlToSSOEndpoint(idProxy.getIDPSSOEndpoint()));
+			endpointContext.setEndpoint(SAML2Helper.urlToSSOEndpoint(idProxy.getIDPSSOEndpoint()));
 
 			/* Set the signature parameters */
 			SignatureSigningParameters signingParameters = new SignatureSigningParameters();
@@ -112,7 +115,7 @@ public class SAML2LoginServlet extends HttpServlet {
 				"org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
 			velocityEngine.init();
 
-			SAML2Util.logSAMLObject((AuthnRequest)context.getMessage());
+			SAML2Helper.logSAMLObject((AuthnRequest)context.getMessage());
 
 			/* Set up the POST encoder */
 			HTTPPostEncoder encoder = new HTTPPostEncoder();
@@ -158,20 +161,20 @@ public class SAML2LoginServlet extends HttpServlet {
 	private AuthnRequest buildAuthnRequest() {
 
 		/* Set up the basic authn request */
-		AuthnRequest authnRequest = SAML2Util.buildSAMLObject(AuthnRequest.class);
+		AuthnRequest authnRequest = SAML2Helper.buildSAMLObject(AuthnRequest.class);
 		authnRequest.setIssueInstant(Instant.now());
 		authnRequest.setDestination(idProxy.getIDPSSOEndpoint());
 		authnRequest.setProtocolBinding(SAMLConstants.SAML2_POST_BINDING_URI);
 		authnRequest.setAssertionConsumerServiceURL(idProxy.getSPAssertionEndpoint());
-		authnRequest.setID(SAML2Util.generateSecureRandomId());
-		authnRequest.setIssuer(SAML2Util.buildIssuer(idProxy.getSPEntityID()));
-		authnRequest.setNameIDPolicy(SAML2Util.buildNameIdPolicy());
+		authnRequest.setID(SAML2Helper.generateSecureRandomId());
+		authnRequest.setIssuer(SAML2Helper.buildIssuer(idProxy.getSPEntityID()));
+		authnRequest.setNameIDPolicy(SAML2Helper.buildNameIdPolicy());
 
 		/* Set the requested authn context */
-		RequestedAuthnContext requestedAuthnContext = SAML2Util.buildSAMLObject(RequestedAuthnContext.class);
+		RequestedAuthnContext requestedAuthnContext = SAML2Helper.buildSAMLObject(RequestedAuthnContext.class);
 		requestedAuthnContext.setComparison(AuthnContextComparisonTypeEnumeration.EXACT);
 		for (String ctx : IDProxy.getContexts()) {
-			AuthnContextClassRef acr = SAML2Util.buildSAMLObject(AuthnContextClassRef.class);
+			AuthnContextClassRef acr = SAML2Helper.buildSAMLObject(AuthnContextClassRef.class);
 			acr.setURI(ctx);
 			requestedAuthnContext.getAuthnContextClassRefs().add(acr);
 		}

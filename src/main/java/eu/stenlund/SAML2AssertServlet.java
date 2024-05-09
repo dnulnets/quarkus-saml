@@ -14,6 +14,11 @@ import org.opensaml.xmlsec.encryption.support.Decrypter;
 import org.opensaml.xmlsec.encryption.support.DecryptionException;
 import org.opensaml.xmlsec.encryption.support.InlineEncryptedKeyResolver;
 import org.opensaml.xmlsec.keyinfo.impl.StaticKeyInfoCredentialResolver;
+
+import eu.stenlund.helper.SAML2Helper;
+import eu.stenlund.helper.Session;
+import eu.stenlund.helper.SessionHelper;
+
 import org.opensaml.saml.saml2.core.StatusCode;
 import org.opensaml.saml.security.impl.MetadataCredentialResolver;
 import org.opensaml.saml.common.messaging.context.SAMLBindingContext;
@@ -113,8 +118,8 @@ public class SAML2AssertServlet extends HttpServlet {
 					}
 
 					/* Verify the signature */
-					MetadataCredentialResolver metadataCredentialResolver = SAML2Util.getIdPMetadataCredentialResolver(idProxy.getFilesystemMetadataResolver());
-					SAML2Util.verifySignature(messageContext, idProxy.getIDPEntityID(), metadataCredentialResolver);
+					MetadataCredentialResolver metadataCredentialResolver = SAML2Helper.getIdPMetadataCredentialResolver(idProxy.getFilesystemMetadataResolver());
+					SAML2Helper.verifySignature(messageContext, idProxy.getIDPEntityID(), metadataCredentialResolver);
 
 					/* Decrypt the assertion */
 					StaticKeyInfoCredentialResolver keyInfoCredentialResolver = new StaticKeyInfoCredentialResolver(idProxy.getEncryptionCredential());
@@ -179,7 +184,7 @@ public class SAML2AssertServlet extends HttpServlet {
 		Assertion a;
 		try {
 			a = (Assertion)decrypter.decryptData(ea.getEncryptedData());
-			SAML2Util.logSAMLObject(a);
+			SAML2Helper.logSAMLObject(a);
 		} catch (DecryptionException e) {
 			log.error ("Unable to decrypt assertion, " + e.getMessage());
 			throw new IDProxyException("Unable to decrypt assertion", e);
@@ -231,7 +236,7 @@ public class SAML2AssertServlet extends HttpServlet {
 
 					if(aa.getAttributeValues().size() > 0) {
 
-						uid = Optional.of(SAML2Util.getAttributeValue(aa.getAttributeValues().get(0)));
+						uid = Optional.of(SAML2Helper.getAttributeValue(aa.getAttributeValues().get(0)));
 
 					}
 				}

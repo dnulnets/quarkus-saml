@@ -1,4 +1,4 @@
-package eu.stenlund;
+package eu.stenlund.helper;
 
 import java.io.Serializable;
 

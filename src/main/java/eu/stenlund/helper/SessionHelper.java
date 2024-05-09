@@ -1,4 +1,4 @@
-package eu.stenlund;
+package eu.stenlund.helper;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -183,7 +183,7 @@ public class SessionHelper {
      * @param js Session data
      * @return A session cookie
      */
-    Cookie createCookieFromSession(Session js)
+    public Cookie createCookieFromSession(Session js)
     {
         ByteArrayOutputStream baos = null;
         baos = new ByteArrayOutputStream();
@@ -232,7 +232,7 @@ public class SessionHelper {
      * @param cookie Idproxy session cookie
      * @return Session data
      */
-    Session createSessionFromCookie(String cookie)
+    public Session createSessionFromCookie(String cookie)
     {
         Session o = null;
         byte[] data;
