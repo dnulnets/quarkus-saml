@@ -48,6 +48,8 @@ public class IDProxy {
 	String spPEMSigning;
 	@ConfigProperty(name = "eu.stenlund.sp.encryption.pem")
 	String spPEMEncryption;
+	@ConfigProperty(name = "eu.stenlund.security.jwt.cookie.name")
+	String jwtCookieName;
 
 	/* SP information */
 	private Credential spSigning = null;
@@ -158,5 +160,10 @@ public class IDProxy {
 	public static String[] getContexts()
 	{
 		return contexts;
+	}
+
+	public String getJWTCookieName()
+	{
+		return jwtCookieName; 
 	}
 }

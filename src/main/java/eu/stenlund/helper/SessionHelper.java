@@ -210,7 +210,19 @@ public class SessionHelper {
         nc.setMaxAge(MAX_AGE);
         nc.setPath("/");
         nc.setDomain(getDomain());
-        nc.setAttribute("SameSite", "Strict"); // Aaaargh, need to fix this, not supported for now
+        nc.setAttribute("SameSite", "Lax"); // Aaaargh, need to fix this, not supported for now
+        return nc;
+    }
+
+    public Cookie createCookieFromString(String name, String s)
+    {
+        Cookie nc = new Cookie (name, s);
+        nc.setSecure(true);
+        nc.setHttpOnly(true);
+        nc.setMaxAge(MAX_AGE);
+        nc.setPath("/");
+        nc.setDomain(getDomain());
+        nc.setAttribute("SameSite", "Lax"); // Aaaargh, need to fix this, not supported for now
         return nc;
     }
 
@@ -224,6 +236,18 @@ public class SessionHelper {
         nc.setMaxAge(0);
         return nc;
     }
+
+    /**
+     * Creates a delete cookie for the session cookie.
+     *
+     * @return Session cookie
+     */
+    public Cookie deleteCookieNamed(String named) {
+        Cookie nc = new Cookie (named, "");
+        nc.setMaxAge(0);
+        return nc;
+    }
+
 
     /**
      * Creates the session information based on the cookie.

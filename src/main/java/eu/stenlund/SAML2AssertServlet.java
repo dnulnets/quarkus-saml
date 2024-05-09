@@ -1,6 +1,7 @@
 package eu.stenlund;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +19,8 @@ import org.opensaml.xmlsec.keyinfo.impl.StaticKeyInfoCredentialResolver;
 import eu.stenlund.helper.SAML2Helper;
 import eu.stenlund.helper.Session;
 import eu.stenlund.helper.SessionHelper;
+import io.smallrye.jwt.build.Jwt;
+import io.smallrye.jwt.build.JwtClaimsBuilder;
 
 import org.opensaml.saml.saml2.core.StatusCode;
 import org.opensaml.saml.security.impl.MetadataCredentialResolver;
@@ -32,6 +35,7 @@ import org.opensaml.saml.saml2.core.AuthnContext;
 import org.opensaml.saml.saml2.core.AuthnStatement;
 import org.opensaml.saml.saml2.core.EncryptedAssertion;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -50,6 +54,7 @@ public class SAML2AssertServlet extends HttpServlet {
 	@Inject SessionHelper sessionHelper;
 
 	@Override
+	@PermitAll
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
 		/* Get the cookie */
@@ -70,6 +75,7 @@ public class SAML2AssertServlet extends HttpServlet {
 
 				log.warn("Invalid combination of assertion and cookie");
 				resp.addCookie(sessionHelper.deleteCookie());
+				resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 				resp.setStatus(401);
 				resp.addHeader("Content-Type", "text/plain");
 				resp.getWriter().write("Unable to authenticate user");
@@ -112,6 +118,7 @@ public class SAML2AssertServlet extends HttpServlet {
 						log.warn ("Unable to identify user, " + v);
 						resp.setStatus(401);
 						resp.addCookie(sessionHelper.deleteCookie());
+						resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 						resp.addHeader("Content-Type", "text/plain");
 						resp.getWriter().write("Unable to authenticate user, " + v);
 						return;
@@ -139,10 +146,22 @@ public class SAML2AssertServlet extends HttpServlet {
 					s.id = null;
 					s.authnID = null;
 					Cookie c = sessionHelper.createCookieFromSession(s);
-					if (c != null)
+					if (c != null) {
 						resp.addCookie(c);
-					else
+						JwtClaimsBuilder jcb = Jwt.claims();
+						String jwt = jcb
+							.subject(s.uid)
+							.expiresIn(Duration.ofMinutes(10))
+							.audience(idProxy.getSPEntityID())
+							.issuer(idProxy
+							.getIDPEntityID())
+							.sign();	
+						resp.addCookie(sessionHelper.createCookieFromString(idProxy.getJWTCookieName(), jwt));
+					} else {
 						resp.addCookie(sessionHelper.deleteCookie());
+						resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
+					}
+
 					SessionHelper.logSession(s);
 
 					resp.setStatus(200);
@@ -153,6 +172,8 @@ public class SAML2AssertServlet extends HttpServlet {
 					log.error ("Unable to accept or decode response, " + e.getMessage());
 					resp.setStatus(401);
 					resp.addCookie(sessionHelper.deleteCookie());
+										JwtClaimsBuilder jcb = Jwt.claims();
+					resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 					resp.addHeader("Content-Type", "text/plain");
 					resp.getWriter().write("Unable to authenticate user");
 
@@ -164,6 +185,7 @@ public class SAML2AssertServlet extends HttpServlet {
 
 			log.warn("Missing cookie");
 			resp.addCookie(sessionHelper.deleteCookie());
+			resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 			resp.setStatus(401);
 			resp.addHeader("Content-Type", "text/plain");
 			resp.getWriter().write("Unable to authenticate user");

@@ -49,3 +49,5 @@ sp-encryption.crt
 sp-encryption.key
 sp-signing.crt
 sp-signing.key
+jwt.key
+jwt.crt
