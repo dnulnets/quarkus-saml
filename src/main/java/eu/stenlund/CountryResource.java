@@ -1,11 +1,14 @@
 package eu.stenlund;
 
+import java.security.Principal;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Set;
 
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.jboss.logging.Logger;
 
+import io.quarkus.security.identity.CurrentIdentityAssociation;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
@@ -24,14 +27,20 @@ public class CountryResource {
     public SecurityIdentity securityIdentity;
 
     public CountryResource() {
-        countries.add(new Country("Apple", "Winter fruit"));
-        countries.add(new Country("Pineapple", "Tropical fruit"));
+        countries.add(new Country("Sweden", "Konungariket Sverige"));
+        countries.add(new Country("Norge", "Konugariket Norge"));
     }
 
     @PermitAll
     @GET
     public Set<Country> list() {
-        log.info (securityIdentity.getPrincipal());
+        Principal p = securityIdentity.getPrincipal();
+        log.info ("Anonymous="+securityIdentity.isAnonymous());
+        if (securityIdentity.isAnonymous()) {
+            log.info ("Name=?");
+        } else {
+            log.info ("Name=" + p.getName());
+        }
         return countries;
     }
 
