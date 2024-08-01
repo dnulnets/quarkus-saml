@@ -5,7 +5,7 @@ log in a user using SAML together with Quarkus security.
 
 * Login endpoint is http://localhost:8080/SAML2/login
 * Assert endpoint is http://localhost:8080/SAML2/assert
-* Open endpoint is (http://localhost:8080/countries/open)
+* Open endpoint is http://localhost:8080/countries/open
 * Protected endpoint http://localhost:8080/countries/closed
 
 ## Running the application in dev mode
