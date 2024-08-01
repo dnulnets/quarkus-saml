@@ -44,7 +44,7 @@ nb-configuration.xml
 
 # My own files
 idp-metadata.xml
-sp-metadata.xml
+# sp-metadata.xml
 sp-encryption.crt
 sp-encryption.key
 sp-signing.crt

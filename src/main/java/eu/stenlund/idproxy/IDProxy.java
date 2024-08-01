@@ -1,6 +1,7 @@
 package eu.stenlund.idproxy;
 
 import java.io.File;
+import java.util.List;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -51,8 +52,6 @@ public class IDProxy {
 
 	@ConfigProperty(name = "idproxy.sp.entityID")
 	String spEntityID;
-	@ConfigProperty(name = "idproxy.sp.assertion.endpoint")
-	String spAssertionEndpoint;
 	@ConfigProperty(name = "idproxy.sp.signing.pem")
 	String spPEMSigning;
 	@ConfigProperty(name = "idproxy.sp.encryption.pem")
@@ -67,6 +66,8 @@ public class IDProxy {
 
 	@ConfigProperty(name = "idproxy.base-url")
 	String baseURL;
+	@ConfigProperty(name = "idproxy.valid-return-url")
+	List<String> validReturnURL;
 
 	/* SP information */
 	private Credential spSigning = null;
@@ -164,11 +165,6 @@ public class IDProxy {
 		return spEntityID;
 	}
 
-	public String getSPAssertionEndpoint()
-	{
-		return spAssertionEndpoint;
-	}
-
 	public FilesystemMetadataResolver getFilesystemMetadataResolver()
 	{
 		return metadataResolver;
@@ -202,5 +198,9 @@ public class IDProxy {
 
 	public String getIdpFriendlyUID() {
 		return idpFriendlyUID;
+	}
+
+	public List<String> getValidReturnURL() {
+		return validReturnURL;
 	}
 }

@@ -38,23 +38,25 @@ import jakarta.servlet.http.Cookie;
  * 
  */
 @ApplicationScoped
-public class CookieHelper {
+public class SessionHelper {
 
-    private static final Logger log = Logger.getLogger(CookieHelper.class);
+    private static final Logger log = Logger.getLogger(SessionHelper.class);
 
     /**
-     * The cookie domain
+     * The session cookie domain
      */
     @ConfigProperty(name = "idproxy.security.session.cookie.domain")
     String cookieDomain;
 
-    @ConfigProperty(name = "idproxy.security.session.cookie.path")
-    String cookiePath;
+    /**
+     * The session cookie path, hardcoded to SAML2
+     */
+    private static String cookiePath = "/SAML2";
 
     /**
      * The name of the cookie where we stores session information.
      */
-    @ConfigProperty(name = "idproxy.security.session.cookie.name")
+    @ConfigProperty(name = "idproxy.security.session.cookie.name", defaultValue = "IDPROXY")
     public String cookieNameSession;
     private static int MAX_AGE = 600;
 
@@ -74,7 +76,7 @@ public class CookieHelper {
      * 
      * @throws NoSuchAlgorithmException The system do not support the algorithm.
      */
-    public CookieHelper(@ConfigProperty(name = "idproxy.security.session.cookie.key") String cookieKey) {
+    public SessionHelper(@ConfigProperty(name = "idproxy.security.session.cookie.key") String cookieKey) {
         if (cookieKey != null) {
             log.info("Using configuration cookie key");
             try {

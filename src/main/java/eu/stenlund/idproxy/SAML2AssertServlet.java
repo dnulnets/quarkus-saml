@@ -22,7 +22,7 @@ import org.opensaml.xmlsec.keyinfo.impl.StaticKeyInfoCredentialResolver;
 
 import eu.stenlund.idproxy.helper.SAML2Helper;
 import eu.stenlund.idproxy.helper.Session;
-import eu.stenlund.idproxy.helper.CookieHelper;
+import eu.stenlund.idproxy.helper.SessionHelper;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.jwt.build.JwtClaimsBuilder;
 
@@ -55,7 +55,7 @@ public class SAML2AssertServlet extends HttpServlet {
 
 	private static final Logger log = Logger.getLogger("SAML2AssertServlet");
 	@Inject IDProxy idProxy;
-	@Inject CookieHelper sessionHelper;
+	@Inject SessionHelper sessionHelper;
 
 	@Override
 	@PermitAll
@@ -69,7 +69,7 @@ public class SAML2AssertServlet extends HttpServlet {
 					s = sessionHelper.createSessionFromCookie(c.getValue());
 			}
 		}
-		CookieHelper.logSession(s);
+		SessionHelper.logSession(s);
 
 		/* If we do not get a cookie, we ignore this POST */
 		if (s!=null) {
@@ -160,7 +160,7 @@ public class SAML2AssertServlet extends HttpServlet {
 					s.uid = uid.iterator().next();
 					s.id = null;
 					s.authnID = null;
-					CookieHelper.logSession(s);
+					SessionHelper.logSession(s);
 					Cookie c = sessionHelper.createCookieFromSession(s);
 					if (c != null) {
 						resp.addCookie(c);

@@ -1,9 +1,11 @@
 package eu.stenlund.idproxy;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.time.Instant;
 
+import org.apache.hc.core5.net.URIBuilder;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.jboss.logging.Logger;
@@ -27,7 +29,7 @@ import org.opensaml.xmlsec.signature.support.SignatureConstants;
 
 import eu.stenlund.idproxy.helper.SAML2Helper;
 import eu.stenlund.idproxy.helper.Session;
-import eu.stenlund.idproxy.helper.CookieHelper;
+import eu.stenlund.idproxy.helper.SessionHelper;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.jwt.build.JwtClaimsBuilder;
 import jakarta.annotation.security.PermitAll;
@@ -48,7 +50,7 @@ public class SAML2LoginServlet extends HttpServlet {
      * The idproxy singleton.
      */
     @Inject IDProxy idProxy;
-	@Inject CookieHelper sessionHelper;
+	@Inject SessionHelper sessionHelper;
 
     private static final Logger log = Logger.getLogger("SAML2Servlet");
 
@@ -64,17 +66,35 @@ public class SAML2LoginServlet extends HttpServlet {
 						s = sessionHelper.createSessionFromCookie(c.getValue());
 			}
 		}
-		CookieHelper.logSession(s);
 
-		/* Set the redirect value */
-		s.redirect = req.getParameter("return");
-		if (s.redirect == null) {
+		/* Make sure we got a redirect URL */
+		String redirect = req.getParameter("return");
+        if (redirect == null) {
 			log.warn("Missing return parameter");
 			resp.setStatus(400);
 			resp.addCookie(sessionHelper.deleteCookie());
 			resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 			return;
+        }
+
+		/* Make sure we got a valid return URL */
+		boolean bMatch = false;
+		redirect.replaceAll("\\s+","");
+        for (String url : idProxy.getValidReturnURL()) {
+            if (redirect.matches(url)) {
+                bMatch = true;
+            }
+        }
+		if (!bMatch) {
+			log.warn("Invalid return parameter");
+			resp.setStatus(400);
+			resp.addCookie(sessionHelper.deleteCookie());
+			resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
+			return;
 		}
+
+		/* Remember the return URL */
+		s.redirect = redirect;
 
 		/* Create an auth request unless we are already identified */
 		if (s.uid == null) {
@@ -140,7 +160,7 @@ public class SAML2LoginServlet extends HttpServlet {
 			encoder.setVelocityEngine(velocityEngine);
 
 			/* Set the cookie */
-			CookieHelper.logSession(s);
+			SessionHelper.logSession(s);
 			Cookie nc = sessionHelper.createCookieFromSession(s);
 			if (nc != null) {
 				resp.addCookie(nc);
@@ -194,7 +214,21 @@ public class SAML2LoginServlet extends HttpServlet {
 		authnRequest.setIssueInstant(Instant.now());
 		authnRequest.setDestination(idProxy.getIDPSSOEndpoint());
 		authnRequest.setProtocolBinding(SAMLConstants.SAML2_POST_BINDING_URI);
-		authnRequest.setAssertionConsumerServiceURL(idProxy.getSPAssertionEndpoint());
+
+
+
+		/* Set the assertion consumer service URL, build it from the base URL */
+		String uri = null;
+		try {
+			URIBuilder uriBuilder = new URIBuilder(idProxy.getBaseURL()).appendPathSegments("SAML2", "assert");
+			uri = uriBuilder.build().toString();
+		} catch (URISyntaxException e) {
+			log.warn("Error building URI for AuthnRequest: " + e.getMessage());
+		}
+
+		if (uri != null)
+			authnRequest.setAssertionConsumerServiceURL(uri);
+
 		authnRequest.setID(SAML2Helper.generateSecureRandomId());
 		authnRequest.setIssuer(SAML2Helper.buildIssuer(idProxy.getSPEntityID()));
 		authnRequest.setNameIDPolicy(SAML2Helper.buildNameIdPolicy());
