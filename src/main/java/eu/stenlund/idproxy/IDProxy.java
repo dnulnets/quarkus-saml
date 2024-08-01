@@ -2,6 +2,7 @@ package eu.stenlund.idproxy;
 
 import java.io.File;
 import java.util.List;
+import java.util.Optional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -69,14 +70,12 @@ public class IDProxy {
 	@ConfigProperty(name = "idproxy.valid-return-url")
 	List<String> validReturnURL;
 
+	@ConfigProperty( name = "idproxy.sp.context")
+	Optional<List<String>> context;
+
 	/* SP information */
 	private Credential spSigning = null;
 	private Credential spEncryption = null;
-
-	private static final String[] contexts = {
-		"http://id.swedenconnect.se/loa/1.0/uncertified-loa3",
-		"http://id.swedenconnect.se/loa/1.0/uncertified-eidas-sub",
-		"http://id.swedenconnect.se/loa/1.0/uncertified-eidas-high"};
 
 	@Startup
 	void init()
@@ -170,9 +169,9 @@ public class IDProxy {
 		return metadataResolver;
 	}
 
-	public static String[] getContexts()
+	public Optional<List<String>> getContexts()
 	{
-		return contexts;
+		return context;
 	}
 
 	public String getJWTCookieName()

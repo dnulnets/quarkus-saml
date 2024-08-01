@@ -234,15 +234,20 @@ public class SAML2LoginServlet extends HttpServlet {
 		authnRequest.setNameIDPolicy(SAML2Helper.buildNameIdPolicy());
 
 		/* Set the requested authn context */
-		RequestedAuthnContext requestedAuthnContext = SAML2Helper.buildSAMLObject(RequestedAuthnContext.class);
-		requestedAuthnContext.setComparison(AuthnContextComparisonTypeEnumeration.EXACT);
-		for (String ctx : IDProxy.getContexts()) {
-			AuthnContextClassRef acr = SAML2Helper.buildSAMLObject(AuthnContextClassRef.class);
-			acr.setURI(ctx);
-			requestedAuthnContext.getAuthnContextClassRefs().add(acr);
-		}
-		authnRequest.setRequestedAuthnContext(requestedAuthnContext);
+		if (idProxy.getContexts().isPresent()) {
 
+			RequestedAuthnContext requestedAuthnContext = SAML2Helper.buildSAMLObject(RequestedAuthnContext.class);
+			requestedAuthnContext.setComparison(AuthnContextComparisonTypeEnumeration.EXACT);
+			
+			idProxy.getContexts().get().forEach (ctx -> {
+				AuthnContextClassRef acr = SAML2Helper.buildSAMLObject(AuthnContextClassRef.class);
+				acr.setURI(ctx);
+				requestedAuthnContext.getAuthnContextClassRefs().add(acr);
+			});
+
+			authnRequest.setRequestedAuthnContext(requestedAuthnContext);
+		}
+		
 		return authnRequest;
 	}
 

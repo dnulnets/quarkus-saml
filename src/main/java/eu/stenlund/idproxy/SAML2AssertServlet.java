@@ -259,16 +259,20 @@ public class SAML2AssertServlet extends HttpServlet {
 		}
 
 		/* Verify authncontext */
-		List<AuthnStatement> laus = a.getAuthnStatements();
-		Boolean bContext = false;
-		for (AuthnStatement as : laus) {
-			AuthnContext ac = as.getAuthnContext();
-			String uri = ac.getAuthnContextClassRef().getURI();
-			bContext = bContext | Arrays.asList(IDProxy.getContexts()).contains (uri);
-		}
-		if (!bContext) {
-			log.warn ("Correct authentication context is missing");
-			throw new IDProxyException("Correct authentication context is missing");
+		if (idProxy.getContexts().isPresent()) {
+
+			List<AuthnStatement> laus = a.getAuthnStatements();
+			Boolean bContext = false;
+			for (AuthnStatement as : laus) {
+				AuthnContext ac = as.getAuthnContext();
+				String uri = ac.getAuthnContextClassRef().getURI();
+				bContext = bContext | idProxy.getContexts().get().contains (uri);
+			}
+			if (!bContext) {
+				log.warn ("Correct authentication context is missing");
+				throw new IDProxyException("Correct authentication context is missing");
+			}
+
 		}
 
 		/* Try to locate the user id */
