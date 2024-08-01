@@ -1,4 +1,4 @@
-package eu.stenlund.helper;
+package eu.stenlund.idproxy.helper;
 
 import java.io.Serializable;
 
@@ -19,6 +19,7 @@ public class Session implements Serializable {
     public String id = null;
     public String authnID = null;
     public String uid = null;
+    public String redirect = null;
 
 }
 

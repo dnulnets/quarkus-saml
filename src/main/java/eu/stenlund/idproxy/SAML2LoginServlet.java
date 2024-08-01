@@ -1,4 +1,4 @@
-package eu.stenlund;
+package eu.stenlund.idproxy;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -25,9 +25,9 @@ import org.opensaml.xmlsec.context.SecurityParametersContext;
 import org.opensaml.xmlsec.keyinfo.impl.BasicKeyInfoGeneratorFactory;
 import org.opensaml.xmlsec.signature.support.SignatureConstants;
 
-import eu.stenlund.helper.SAML2Helper;
-import eu.stenlund.helper.Session;
-import eu.stenlund.helper.SessionHelper;
+import eu.stenlund.idproxy.helper.SAML2Helper;
+import eu.stenlund.idproxy.helper.Session;
+import eu.stenlund.idproxy.helper.CookieHelper;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.jwt.build.JwtClaimsBuilder;
 import jakarta.annotation.security.PermitAll;
@@ -48,7 +48,7 @@ public class SAML2LoginServlet extends HttpServlet {
      * The idproxy singleton.
      */
     @Inject IDProxy idProxy;
-	@Inject SessionHelper sessionHelper;
+	@Inject CookieHelper sessionHelper;
 
     private static final Logger log = Logger.getLogger("SAML2Servlet");
 
@@ -64,7 +64,17 @@ public class SAML2LoginServlet extends HttpServlet {
 						s = sessionHelper.createSessionFromCookie(c.getValue());
 			}
 		}
-		SessionHelper.logSession(s);
+		CookieHelper.logSession(s);
+
+		/* Set the redirect value */
+		s.redirect = req.getParameter("return");
+		if (s.redirect == null) {
+			log.warn("Missing return parameter");
+			resp.setStatus(400);
+			resp.addCookie(sessionHelper.deleteCookie());
+			resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
+			return;
+		}
 
 		/* Create an auth request unless we are already identified */
 		if (s.uid == null) {
@@ -78,7 +88,7 @@ public class SAML2LoginServlet extends HttpServlet {
 
 			/* Get the message id */
 			s.authnID = authn.getID();
-
+		
 			/* Set the realy state, need this for pairing it together again on the assert */
 			SAMLBindingContext bindingContext = context.ensureSubcontext(SAMLBindingContext.class);
 			s.id = SAML2Helper.generateSecureRandomId();
@@ -130,7 +140,7 @@ public class SAML2LoginServlet extends HttpServlet {
 			encoder.setVelocityEngine(velocityEngine);
 
 			/* Set the cookie */
-			SessionHelper.logSession(s);
+			CookieHelper.logSession(s);
 			Cookie nc = sessionHelper.createCookieFromSession(s);
 			if (nc != null) {
 				resp.addCookie(nc);
@@ -165,7 +175,7 @@ public class SAML2LoginServlet extends HttpServlet {
 				.getIDPEntityID())
 				.sign();
 			resp.setStatus(200);
-			resp.addCookie(sessionHelper.createCookieFromString(idProxy.getJWTCookieName(), jwt));
+			resp.addCookie(sessionHelper.createCookieFromString(idProxy.getJWTCookieName(), idProxy.getJwtCookieDomain(), idProxy.getJwtCookiePath(), jwt));
 			resp.addHeader("Content-Type", "text/plain");
 			resp.getWriter().write("Authenticated: " + s.uid);		
 	

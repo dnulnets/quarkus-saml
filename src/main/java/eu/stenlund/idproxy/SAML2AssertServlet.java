@@ -1,10 +1,14 @@
-package eu.stenlund;
+package eu.stenlund.idproxy;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jboss.logging.Logger;
 import org.opensaml.messaging.context.MessageContext;
@@ -16,9 +20,9 @@ import org.opensaml.xmlsec.encryption.support.DecryptionException;
 import org.opensaml.xmlsec.encryption.support.InlineEncryptedKeyResolver;
 import org.opensaml.xmlsec.keyinfo.impl.StaticKeyInfoCredentialResolver;
 
-import eu.stenlund.helper.SAML2Helper;
-import eu.stenlund.helper.Session;
-import eu.stenlund.helper.SessionHelper;
+import eu.stenlund.idproxy.helper.SAML2Helper;
+import eu.stenlund.idproxy.helper.Session;
+import eu.stenlund.idproxy.helper.CookieHelper;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.jwt.build.JwtClaimsBuilder;
 
@@ -51,7 +55,7 @@ public class SAML2AssertServlet extends HttpServlet {
 
 	private static final Logger log = Logger.getLogger("SAML2AssertServlet");
 	@Inject IDProxy idProxy;
-	@Inject SessionHelper sessionHelper;
+	@Inject CookieHelper sessionHelper;
 
 	@Override
 	@PermitAll
@@ -65,7 +69,7 @@ public class SAML2AssertServlet extends HttpServlet {
 					s = sessionHelper.createSessionFromCookie(c.getValue());
 			}
 		}
-		SessionHelper.logSession(s);
+		CookieHelper.logSession(s);
 
 		/* If we do not get a cookie, we ignore this POST */
 		if (s!=null) {
@@ -87,7 +91,7 @@ public class SAML2AssertServlet extends HttpServlet {
 				NonnullSupplier<HttpServletRequest> supplier = NonnullSupplier.of(req);
 				decoder.setHttpServletRequestSupplier(supplier);
 
-				Optional<String> uid = Optional.empty();
+				Set<String> uid = new HashSet<>();
 				try {
 
 					/* Retrieve the message */
@@ -139,12 +143,24 @@ public class SAML2AssertServlet extends HttpServlet {
 							.map(ea->handleAssert(decrypter, ea))
 							.filter(Optional::isPresent)
 							.map(Optional::get)
-							.findFirst();
+							.collect(Collectors.toSet());
+
+					/* Did we get any uid? */
+					if (uid.size() != 1) {
+						log.warn ("Unable to identify user, " + uid.size());
+						resp.setStatus(401);
+						resp.addCookie(sessionHelper.deleteCookie());
+						resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
+						resp.addHeader("Content-Type", "text/plain");
+						resp.getWriter().write("Unable to authenticate user");
+						return;
+					}
 
 					/* Set up the cookie */
-					s.uid = uid.orElse(null);
+					s.uid = uid.iterator().next();
 					s.id = null;
 					s.authnID = null;
+					CookieHelper.logSession(s);
 					Cookie c = sessionHelper.createCookieFromSession(s);
 					if (c != null) {
 						resp.addCookie(c);
@@ -155,24 +171,33 @@ public class SAML2AssertServlet extends HttpServlet {
 							.audience(idProxy.getSPEntityID())
 							.issuer(idProxy
 							.getIDPEntityID())
-							.sign();	
-						resp.addCookie(sessionHelper.createCookieFromString(idProxy.getJWTCookieName(), jwt));
+							.preferredUserName(s.uid)
+							.issuedAt(Instant.now())
+							.sign();
+						resp.addCookie(sessionHelper.createCookieFromString(idProxy.getJWTCookieName(), idProxy.getJwtCookieDomain(), idProxy.getJwtCookiePath(), jwt));
+
+						/* If we have a redirect, send us there */
+						if (s.redirect != null) {
+							resp.sendRedirect(s.redirect);
+						} else {
+							resp.setStatus(200);
+							resp.addHeader("Content-Type", "text/plain");
+							resp.getWriter().write("Authenticated: " + uid.iterator().next());
+						}
+
 					} else {
+						log.warn("Unable to create cookie");
+						resp.setStatus(401);
 						resp.addCookie(sessionHelper.deleteCookie());
 						resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
+						resp.addHeader("Content-Type", "text/plain");
+						resp.getWriter().write("Unable to authenticate user");
 					}
 
-					SessionHelper.logSession(s);
-
-					resp.setStatus(200);
-					resp.addHeader("Content-Type", "text/plain");
-					resp.getWriter().write("Authenticated: " + uid.orElse("Unknown"));
-					
 				} catch (ComponentInitializationException | MessageDecodingException e) {
 					log.error ("Unable to accept or decode response, " + e.getMessage());
 					resp.setStatus(401);
 					resp.addCookie(sessionHelper.deleteCookie());
-										JwtClaimsBuilder jcb = Jwt.claims();
 					resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 					resp.addHeader("Content-Type", "text/plain");
 					resp.getWriter().write("Unable to authenticate user");
@@ -247,26 +272,33 @@ public class SAML2AssertServlet extends HttpServlet {
 		}
 
 		/* Try to locate the user id */
-		Optional<String> uid = Optional.empty();
+		Set<String> uid = new HashSet<>();
 		List<AttributeStatement> las = a.getAttributeStatements();
 		for (AttributeStatement as : las) {
 
 			List<Attribute> ll = as.getAttributes();
 			for (Attribute aa : ll) {
 				
-				if (aa.getName().compareTo("urn:oid:0.9.2342.19200300.100.1.1")==0) {
+				if (aa.getName().compareTo(idProxy.getIdpUID())==0 || 
+					aa.getFriendlyName().compareTo(idProxy.getIdpFriendlyUID())==0) {	
 
 					if(aa.getAttributeValues().size() > 0) {
 
-						uid = Optional.of(SAML2Helper.getAttributeValue(aa.getAttributeValues().get(0)));
+						aa.getAttributeValues().forEach(av->uid.add(SAML2Helper.getAttributeValue(av)));
 
 					}
 				}
 			}
 
-			log.info ("Userid = " + uid.orElse("No userid"));
+			uid.forEach(u -> log.info ("Found user identities = " + u));
+
 		}
 
-		return uid;
+		/* Did we get any uid or too many, we only support one for now */
+		if (uid.size() != 1) {
+			log.warn ("Unable to identify user, " + uid.size());
+			return Optional.empty();
+		} else
+			return Optional.of (uid.iterator().next());
 	}
 }

@@ -1,5 +1,7 @@
-package eu.stenlund.helper;
+package eu.stenlund.idproxy.helper;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -52,7 +54,7 @@ import org.opensaml.xmlsec.keyinfo.KeyInfoCredentialResolver;
 import org.opensaml.xmlsec.signature.support.impl.ExplicitKeySignatureTrustEngine;
 import org.w3c.dom.Element;
 
-import eu.stenlund.IDProxyException;
+import eu.stenlund.idproxy.IDProxyException;
 import net.shibboleth.shared.component.ComponentInitializationException;
 import net.shibboleth.shared.security.impl.RandomIdentifierGenerationStrategy;
 import net.shibboleth.shared.xml.SerializeSupport;
@@ -216,7 +218,15 @@ public class SAML2Helper {
 	 */
 	public Credential readPrivatePEMKey (String file)
 	{
-		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(file);
+		File f = new File(file);
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream (f);
+		} catch (IOException e) {
+			log.warn ("Unable to read private key " + file + ", " + e.getMessage());
+			throw new IDProxyException("Unable to read private key", e);
+
+		}
 		PEMParser pp = new PEMParser(new InputStreamReader (inputStream));
 		PrivateKey pk = null;
 

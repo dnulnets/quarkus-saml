@@ -1,4 +1,4 @@
-package eu.stenlund.helper;
+package eu.stenlund.idproxy.helper;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -38,20 +38,23 @@ import jakarta.servlet.http.Cookie;
  * 
  */
 @ApplicationScoped
-public class SessionHelper {
+public class CookieHelper {
 
-    private static final Logger log = Logger.getLogger(SessionHelper.class);
+    private static final Logger log = Logger.getLogger(CookieHelper.class);
 
     /**
      * The cookie domain
      */
-    @ConfigProperty(name = "eu.stenlund.security.session.cookie.domain")
+    @ConfigProperty(name = "idproxy.security.session.cookie.domain")
     String cookieDomain;
+
+    @ConfigProperty(name = "idproxy.security.session.cookie.path")
+    String cookiePath;
 
     /**
      * The name of the cookie where we stores session information.
      */
-    @ConfigProperty(name = "eu.stenlund.security.session.cookie.name")
+    @ConfigProperty(name = "idproxy.security.session.cookie.name")
     public String cookieNameSession;
     private static int MAX_AGE = 600;
 
@@ -71,7 +74,7 @@ public class SessionHelper {
      * 
      * @throws NoSuchAlgorithmException The system do not support the algorithm.
      */
-    public SessionHelper(@ConfigProperty(name = "eu.stenlund.security.session.cookie.key") String cookieKey) {
+    public CookieHelper(@ConfigProperty(name = "idproxy.security.session.cookie.key") String cookieKey) {
         if (cookieKey != null) {
             log.info("Using configuration cookie key");
             try {
@@ -208,20 +211,20 @@ public class SessionHelper {
         nc.setSecure(true);
         nc.setHttpOnly(true);
         nc.setMaxAge(MAX_AGE);
-        nc.setPath("/");
+        nc.setPath(getCookiePath());
         nc.setDomain(getDomain());
         nc.setAttribute("SameSite", "Lax"); // Aaaargh, need to fix this, not supported for now
         return nc;
     }
 
-    public Cookie createCookieFromString(String name, String s)
+    public Cookie createCookieFromString(String name, String domain, String path, String s)
     {
         Cookie nc = new Cookie (name, s);
         nc.setSecure(true);
         nc.setHttpOnly(true);
         nc.setMaxAge(MAX_AGE);
-        nc.setPath("/");
-        nc.setDomain(getDomain());
+        nc.setPath(path);
+        nc.setDomain(domain);
         nc.setAttribute("SameSite", "Lax"); // Aaaargh, need to fix this, not supported for now
         return nc;
     }
@@ -284,6 +287,7 @@ public class SessionHelper {
         log.info ("Session.AuthnID=" + s.authnID);
         log.info ("Session.Id="+s.id);
         log.info ("Session.UID=" + s.uid);
+        log.info ("Session.Redirect=" + s.redirect);
     }
 
     public String getCookieNameSession() {
@@ -292,5 +296,9 @@ public class SessionHelper {
 
     public String getDomain() {
         return this.cookieDomain;
+    }
+
+    public String getCookiePath() {
+        return cookiePath;
     }
 }

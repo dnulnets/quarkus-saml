@@ -7,10 +7,13 @@ import java.util.Set;
 
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.jboss.logging.Logger;
+import org.opensaml.saml.saml1.core.Audience;
 
-import io.quarkus.security.identity.CurrentIdentityAssociation;
+import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -18,6 +21,7 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
 @Path("/countries")
+@RequestScoped
 public class CountryResource {
 
     private Set<Country> countries = Collections.newSetFromMap(Collections.synchronizedMap(new LinkedHashMap<>()));
@@ -26,12 +30,14 @@ public class CountryResource {
     @Inject
     public SecurityIdentity securityIdentity;
 
+    @Inject public JsonWebToken jwt;
+
     public CountryResource() {
         countries.add(new Country("Sweden", "Konungariket Sverige"));
         countries.add(new Country("Norge", "Konugariket Norge"));
     }
 
-    @PermitAll
+    @Authenticated
     @GET
     public Set<Country> list() {
         Principal p = securityIdentity.getPrincipal();
@@ -41,6 +47,9 @@ public class CountryResource {
         } else {
             log.info ("Name=" + p.getName());
         }
+
+        //log.info ("JWT=" + jwt);
+        //jwt.getAudience().forEach(s->log.info ("Audience = " + s)); 
         return countries;
     }
 
