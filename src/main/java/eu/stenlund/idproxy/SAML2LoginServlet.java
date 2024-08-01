@@ -46,45 +46,47 @@ import net.shibboleth.shared.primitive.NonnullSupplier;
 @WebServlet(name = "SAML2Login", urlPatterns = "/SAML2/login")
 public class SAML2LoginServlet extends HttpServlet {
 
-    /**
-     * The idproxy singleton.
-     */
-    @Inject IDProxy idProxy;
-	@Inject SessionHelper sessionHelper;
+	/**
+	 * The idproxy singleton.
+	 */
+	@Inject
+	IDProxy idProxy;
+	@Inject
+	SessionHelper sessionHelper;
 
-    private static final Logger log = Logger.getLogger("SAML2Servlet");
+	private static final Logger log = Logger.getLogger("SAML2Servlet");
 
-    @Override
+	@Override
 	@PermitAll
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
 		/* Get the cookie */
 		Session s = new Session();
 		if (req.getCookies() != null) {
 			for (Cookie c : req.getCookies()) {
 				if (c.getName().compareTo(sessionHelper.getCookieNameSession()) == 0)
-						s = sessionHelper.createSessionFromCookie(c.getValue());
+					s = sessionHelper.createSessionFromCookie(c.getValue());
 			}
 		}
 
 		/* Make sure we got a redirect URL */
 		String redirect = req.getParameter("return");
-        if (redirect == null) {
+		if (redirect == null) {
 			log.warn("Missing return parameter");
 			resp.setStatus(400);
 			resp.addCookie(sessionHelper.deleteCookie());
 			resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 			return;
-        }
+		}
 
 		/* Make sure we got a valid return URL */
 		boolean bMatch = false;
-		redirect.replaceAll("\\s+","");
-        for (String url : idProxy.getValidReturnURL()) {
-            if (redirect.matches(url)) {
-                bMatch = true;
-            }
-        }
+		redirect.replaceAll("\\s+", "");
+		for (String url : idProxy.getValidReturnURL()) {
+			if (redirect.matches(url)) {
+				bMatch = true;
+			}
+		}
 		if (!bMatch) {
 			log.warn("Invalid return parameter");
 			resp.setStatus(400);
@@ -108,13 +110,13 @@ public class SAML2LoginServlet extends HttpServlet {
 
 			/* Get the message id */
 			s.authnID = authn.getID();
-		
+
 			/* Set the realy state, need this for pairing it together again on the assert */
 			SAMLBindingContext bindingContext = context.ensureSubcontext(SAMLBindingContext.class);
 			s.id = SAML2Helper.generateSecureRandomId();
 			bindingContext.setRelayState(s.id);
-			
-			/* Set the peer entity context endpoint to the remote IdP*/
+
+			/* Set the peer entity context endpoint to the remote IdP */
 			SAMLPeerEntityContext peerEntityContext = context.ensureSubcontext(SAMLPeerEntityContext.class);
 			SAMLEndpointContext endpointContext = peerEntityContext.ensureSubcontext(SAMLEndpointContext.class);
 			endpointContext.setEndpoint(SAML2Helper.urlToSSOEndpoint(idProxy.getIDPSSOEndpoint()));
@@ -135,7 +137,7 @@ public class SAML2LoginServlet extends HttpServlet {
 				handler.initialize();
 				handler.invoke(context);
 			} catch (ComponentInitializationException | MessageHandlerException e) {
-				log.error ("Unable to sign the request, " + e.getMessage());
+				log.error("Unable to sign the request, " + e.getMessage());
 				resp.setStatus(401);
 				resp.addCookie(sessionHelper.deleteCookie());
 				resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
@@ -148,10 +150,10 @@ public class SAML2LoginServlet extends HttpServlet {
 			VelocityEngine velocityEngine = new VelocityEngine();
 			velocityEngine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
 			velocityEngine.setProperty("resource.loader.classpath.class",
-				"org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
+					"org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
 			velocityEngine.init();
 
-			SAML2Helper.logSAMLObject((AuthnRequest)context.getMessage());
+			SAML2Helper.logSAMLObject((AuthnRequest) context.getMessage());
 
 			/* Set up the POST encoder */
 			HTTPPostEncoder encoder = new HTTPPostEncoder();
@@ -166,7 +168,7 @@ public class SAML2LoginServlet extends HttpServlet {
 				resp.addCookie(nc);
 				resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 			} else {
-				resp.addCookie (sessionHelper.deleteCookie());
+				resp.addCookie(sessionHelper.deleteCookie());
 				resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 			}
 
@@ -188,17 +190,18 @@ public class SAML2LoginServlet extends HttpServlet {
 
 			JwtClaimsBuilder jcb = Jwt.claims();
 			String jwt = jcb
-				.subject(s.uid)
-				.expiresIn(Duration.ofMinutes(10))
-				.audience(idProxy.getSPEntityID())
-				.issuer(idProxy
-				.getIDPEntityID())
-				.sign();
+					.subject(s.uid)
+					.expiresIn(Duration.ofMinutes(10))
+					.audience(idProxy.getSPEntityID())
+					.issuer(idProxy
+							.getIDPEntityID())
+					.sign();
 			resp.setStatus(200);
-			resp.addCookie(sessionHelper.createCookieFromString(idProxy.getJWTCookieName(), idProxy.getJwtCookieDomain(), idProxy.getJwtCookiePath(), jwt));
+			resp.addCookie(sessionHelper.createCookieFromString(idProxy.getJWTCookieName(),
+					idProxy.getJwtCookieDomain(), idProxy.getJwtCookiePath(), jwt));
 			resp.addHeader("Content-Type", "text/plain");
-			resp.getWriter().write("Authenticated: " + s.uid);		
-	
+			resp.getWriter().write("Authenticated: " + s.uid);
+
 		}
 	}
 
@@ -214,8 +217,6 @@ public class SAML2LoginServlet extends HttpServlet {
 		authnRequest.setIssueInstant(Instant.now());
 		authnRequest.setDestination(idProxy.getIDPSSOEndpoint());
 		authnRequest.setProtocolBinding(SAMLConstants.SAML2_POST_BINDING_URI);
-
-
 
 		/* Set the assertion consumer service URL, build it from the base URL */
 		String uri = null;
@@ -238,8 +239,8 @@ public class SAML2LoginServlet extends HttpServlet {
 
 			RequestedAuthnContext requestedAuthnContext = SAML2Helper.buildSAMLObject(RequestedAuthnContext.class);
 			requestedAuthnContext.setComparison(AuthnContextComparisonTypeEnumeration.EXACT);
-			
-			idProxy.getContexts().get().forEach (ctx -> {
+
+			idProxy.getContexts().get().forEach(ctx -> {
 				AuthnContextClassRef acr = SAML2Helper.buildSAMLObject(AuthnContextClassRef.class);
 				acr.setURI(ctx);
 				requestedAuthnContext.getAuthnContextClassRefs().add(acr);
@@ -247,7 +248,7 @@ public class SAML2LoginServlet extends HttpServlet {
 
 			authnRequest.setRequestedAuthnContext(requestedAuthnContext);
 		}
-		
+
 		return authnRequest;
 	}
 
