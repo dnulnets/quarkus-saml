@@ -3,7 +3,6 @@ package eu.stenlund.idproxy;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -62,15 +61,8 @@ public class SAML2AssertServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
 		/* Get the cookie */
-		Session s = new Session();
-		if (req.getCookies() != null) {
-			for (Cookie c : req.getCookies()) {
-				if (c.getName().compareTo(sessionHelper.getCookieNameSession()) == 0)
-					s = sessionHelper.createSessionFromCookie(c.getValue());
-			}
-		}
-		SessionHelper.logSession(s);
-
+		Session s = sessionHelper.getSessionCookie (req);
+		
 		/* If we do not get a cookie, we ignore this POST */
 		if (s!=null) {
 
@@ -160,7 +152,6 @@ public class SAML2AssertServlet extends HttpServlet {
 					s.uid = uid.iterator().next();
 					s.id = null;
 					s.authnID = null;
-					SessionHelper.logSession(s);
 					Cookie c = sessionHelper.createCookieFromSession(s);
 					if (c != null) {
 						resp.addCookie(c);
@@ -195,7 +186,7 @@ public class SAML2AssertServlet extends HttpServlet {
 					}
 
 				} catch (ComponentInitializationException | MessageDecodingException e) {
-					log.error ("Unable to accept or decode response, " + e.getMessage());
+					log.warn ("Unable to accept or decode response, " + e.getMessage());
 					resp.setStatus(401);
 					resp.addCookie(sessionHelper.deleteCookie());
 					resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
@@ -233,7 +224,7 @@ public class SAML2AssertServlet extends HttpServlet {
 			a = (Assertion)decrypter.decryptData(ea.getEncryptedData());
 			SAML2Helper.logSAMLObject(a);
 		} catch (DecryptionException e) {
-			log.error ("Unable to decrypt assertion, " + e.getMessage());
+			log.warn ("Unable to decrypt assertion, " + e.getMessage());
 			throw new IDProxyException("Unable to decrypt assertion", e);
 		}
 

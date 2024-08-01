@@ -26,6 +26,7 @@ import org.jboss.logging.Logger;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * The session helper object. It is created during startup and creates the
@@ -282,6 +283,26 @@ public class SessionHelper {
         }
 
         return o;
+    }
+
+    /**
+     * Retrieves the session cookie from the given HttpServletRequest object.
+     * If the session cookie is found, it creates and returns a Session object
+     * based on the cookie value. If the session cookie is not found, it returns
+     * a new Session object.
+     *
+     * @param req the HttpServletRequest object from which to retrieve the session cookie
+     * @return a Session object representing the session cookie, or a new Session object if the cookie is not found
+     */
+    public Session getSessionCookie (HttpServletRequest req) {
+		Session s = new Session();
+		if (req.getCookies() != null) {
+			for (Cookie c : req.getCookies()) {
+				if (c.getName().compareTo(getCookieNameSession()) == 0)
+					s = createSessionFromCookie(c.getValue());
+			}
+		}
+        return s;
     }
 
     public static void logSession (Session s)

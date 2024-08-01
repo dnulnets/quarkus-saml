@@ -61,21 +61,17 @@ public class SAML2LoginServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
 		/* Get the cookie */
-		Session s = new Session();
-		if (req.getCookies() != null) {
-			for (Cookie c : req.getCookies()) {
-				if (c.getName().compareTo(sessionHelper.getCookieNameSession()) == 0)
-					s = sessionHelper.createSessionFromCookie(c.getValue());
-			}
-		}
+		Session s = sessionHelper.getSessionCookie (req);
 
-		/* Make sure we got a redirect URL */
+		/* Make sure we got a return URL */
 		String redirect = req.getParameter("return");
 		if (redirect == null) {
 			log.warn("Missing return parameter");
 			resp.setStatus(400);
 			resp.addCookie(sessionHelper.deleteCookie());
 			resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
+			resp.addHeader("Content-Type", "text/plain");
+			resp.getWriter().write("Unable to authenticate user. Should be replaced with a more elaborate error page.");
 			return;
 		}
 
@@ -92,6 +88,8 @@ public class SAML2LoginServlet extends HttpServlet {
 			resp.setStatus(400);
 			resp.addCookie(sessionHelper.deleteCookie());
 			resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
+			resp.addHeader("Content-Type", "text/plain");
+			resp.getWriter().write("Unable to authenticate user. Should be replaced with a more elaborate error page.");
 			return;
 		}
 
@@ -137,12 +135,12 @@ public class SAML2LoginServlet extends HttpServlet {
 				handler.initialize();
 				handler.invoke(context);
 			} catch (ComponentInitializationException | MessageHandlerException e) {
-				log.error("Unable to sign the request, " + e.getMessage());
+				log.warn("Unable to sign the request, " + e.getMessage());
 				resp.setStatus(401);
 				resp.addCookie(sessionHelper.deleteCookie());
 				resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 				resp.addHeader("Content-Type", "text/plain");
-				resp.getWriter().write("Unable to authenticate user");
+				resp.getWriter().write("Unable to authenticate user. Should be replaced with a more elaborate error page.");
 				return;
 			}
 
@@ -161,33 +159,37 @@ public class SAML2LoginServlet extends HttpServlet {
 			encoder.setHttpServletResponseSupplier(NonnullSupplier.of(resp));
 			encoder.setVelocityEngine(velocityEngine);
 
-			/* Set the cookie */
-			SessionHelper.logSession(s);
+			/* Set the cookie and remove the JWT */
 			Cookie nc = sessionHelper.createCookieFromSession(s);
-			if (nc != null) {
+			resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
+			if (nc != null)
 				resp.addCookie(nc);
-				resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
-			} else {
+			else {
+				log.warn("Unable to create session cookie.");
+				resp.setStatus(401);
 				resp.addCookie(sessionHelper.deleteCookie());
-				resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
+				resp.addHeader("Content-Type", "text/plain");
+				resp.getWriter().write("Unable to authenticate user. Should be replaced with a more elaborate error page.");
+				return;
 			}
 
-			/* Encode the message */
+			/* Encode the message SAML message */
 			try {
 				encoder.initialize();
 				encoder.encode();
 			} catch (ComponentInitializationException | MessageEncodingException e) {
-				log.error("Unable to encode the SAML Message, " + e.getMessage());
+				log.warn("Unable to encode the SAML Message, " + e.getMessage());
 				resp.setStatus(401);
 				resp.addCookie(sessionHelper.deleteCookie());
 				resp.addCookie(sessionHelper.deleteCookieNamed(idProxy.getJWTCookieName()));
 				resp.addHeader("Content-Type", "text/plain");
-				resp.getWriter().write("Unable to authenticate user");
+				resp.getWriter().write("Unable to authenticate user. Should be replaced with a more elaborate error page.");
 				return;
 			}
 
 		} else {
 
+			/* Create a new JWT cookie, we are already identified */
 			JwtClaimsBuilder jcb = Jwt.claims();
 			String jwt = jcb
 					.subject(s.uid)
@@ -196,11 +198,17 @@ public class SAML2LoginServlet extends HttpServlet {
 					.issuer(idProxy
 							.getIDPEntityID())
 					.sign();
-			resp.setStatus(200);
 			resp.addCookie(sessionHelper.createCookieFromString(idProxy.getJWTCookieName(),
-					idProxy.getJwtCookieDomain(), idProxy.getJwtCookiePath(), jwt));
-			resp.addHeader("Content-Type", "text/plain");
-			resp.getWriter().write("Authenticated: " + s.uid);
+				idProxy.getJwtCookieDomain(), idProxy.getJwtCookiePath(), jwt));
+
+			/* Redirect us if wanted */
+			if (s.redirect != null) {
+				resp.sendRedirect(s.redirect);
+			} else {
+				resp.setStatus(200);
+				resp.addHeader("Content-Type", "text/plain");
+				resp.getWriter().write("Authenticated: " + s.uid);
+			}
 
 		}
 	}
