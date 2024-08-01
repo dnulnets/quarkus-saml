@@ -7,17 +7,13 @@ import java.util.Set;
 
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.jboss.logging.Logger;
-import org.opensaml.saml.saml1.core.Audience;
 
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.PermitAll;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
 @Path("/countries")
@@ -39,31 +35,47 @@ public class CountryResource {
 
     @Authenticated
     @GET
-    public Set<Country> list() {
-        Principal p = securityIdentity.getPrincipal();
-        log.info ("Anonymous="+securityIdentity.isAnonymous());
+    @Path("closed")
+    public Set<Country> closed() {
+
+        Principal identity = securityIdentity.getPrincipal();
         if (securityIdentity.isAnonymous()) {
-            log.info ("Name=?");
+            log.info ("SecurityIdentity: Anonymous");
         } else {
-            log.info ("Name=" + p.getName());
+            log.info ("SecurityIdentity: Name = " + identity.getName());
         }
 
-        //log.info ("JWT=" + jwt);
-        //jwt.getAudience().forEach(s->log.info ("Audience = " + s)); 
+        log.info ("JWT Subject = " + jwt.getSubject());
+        log.info ("JWT Issuer = " + jwt.getIssuer());
+        if (jwt.getAudience() != null)
+            jwt.getAudience().forEach(s->log.info ("JWT Audience = " + s));
+        else
+            log.info ("JWT Audience = null");   
+        
         return countries;
     }
 
     @PermitAll
-    @POST
-    public Set<Country> add(Country country) {
-        countries.add(country);
+    @GET
+    @Path("open")
+    public Set<Country> open() {
+
+        Principal identity = securityIdentity.getPrincipal();
+        if (securityIdentity.isAnonymous()) {
+            log.info ("SecurityIdentity: Anonymous");
+        } else {
+            log.info ("SecurityIdentity: Name = " + identity.getName());
+        }
+
+        log.info ("JWT Subject = " + jwt.getSubject());
+        log.info ("JWT Issuer = " + jwt.getIssuer());
+        if (jwt.getAudience() != null)
+            jwt.getAudience().forEach(s->log.info ("JWT Audience = " + s));
+        else
+            log.info ("JWT Audience = null");   
+        
         return countries;
     }
 
-    @PermitAll
-    @DELETE
-    public Set<Country> delete(Country country) {
-        countries.removeIf(existingFruit -> existingFruit.name.contentEquals(country.name));
-        return countries;
-    }  
+
 }
