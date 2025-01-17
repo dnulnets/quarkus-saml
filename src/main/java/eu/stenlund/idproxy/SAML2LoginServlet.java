@@ -109,7 +109,7 @@ public class SAML2LoginServlet extends HttpServlet {
 			/* Get the message id */
 			s.authnID = authn.getID();
 
-			/* Set the realy state, need this for pairing it together again on the assert */
+			/* Set the relay state, need this for pairing it together again on the assert */
 			SAMLBindingContext bindingContext = context.ensureSubcontext(SAMLBindingContext.class);
 			s.id = SAML2Helper.generateSecureRandomId();
 			bindingContext.setRelayState(s.id);
